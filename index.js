@@ -91,7 +91,10 @@ var checkSteamJob = new CronJob('* */30 * * * *', function(){
 	var latestTweetId = 0;
 	var sinceId = Infinity;
 	docs.forEach(function(steamChat,ind,arr){
-		if(steamChat.latestTweetId < sinceId && steamChat.latestTweetId > 0) sinceId = steamChat.latestTweetId;
+		if(steamChat.latestTweetId < sinceId && steamChat.latestTweetId > 0) 
+		{
+			sinceId = steamChat.latestTweetId;
+		}
 	});
 	maxId = null;
 	latestTweetId = sinceId;
@@ -104,17 +107,19 @@ var checkSteamJob = new CronJob('* */30 * * * *', function(){
 		console.log(sales);
 		SteamChat.find({}, function(err,docs){
 			docs.forEach(function(steamChat,ind,arr){
-
+				console.log("Sending sales to:");
+				console.log(steamChat);
 				userTweets = sales.tweets.filter(function(tweet){
 					if(tweet.id > steamChat.latestTweetId) return true;
 				});
-				userSales = sales;
-				userSales.tweets = userTweets;
+				var userSales = sales;
+				var userSales.tweets = userTweets;
 
 				userSales.tweets.forEach(function(tweet,ind,arr){
 					bot.sendMessage({"chat_id" : steamChat.id , "text" : tweet.text},function(nodifiedPromise){});		
-					SteamChat.update({"id": steamChat.id}, {$set: {"latestTweetId": latestTweetId}}, {"upsert": true}, function(err,result){});
+					SteamChat.update({"id": steamChat.id}, {$set: {"latestTweetId": tweet.id}}, {"upsert": true}, function(err,result){});
 				});
+
 
 			});	
 		});
