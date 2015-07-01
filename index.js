@@ -6,7 +6,7 @@ mongoose = require('./config/mongoose'),
 Twitter = require('twitter');
 
 db = mongoose();
-
+console.log('Starting app');
 var twitter = new Twitter(config.twitter);
 var SteamChat = db.model('SteamChat');
 
@@ -81,7 +81,7 @@ var getLatestSales = function(sinceId, maxId, latestTweetId, sales, onFinished){
 
 };
 
-var checkSteamJob = new CronJob('* */15 * * * *', function(){
+var checkSteamJob = new CronJob('* */30 * * * *', function(){
 
 
 	console.log('entering job');
@@ -113,6 +113,7 @@ var checkSteamJob = new CronJob('* */15 * * * *', function(){
 
 				userSales.tweets.forEach(function(tweet,ind,arr){
 					bot.sendMessage({"chat_id" : steamChat.id , "text" : tweet.text},function(nodifiedPromise){});		
+					SteamChat.update({"id": steamChat.id}, {$set: {"latestTweetId": latestTweetId}}, {"upsert": true}, function(err,result){});
 				});
 
 			});	
@@ -133,6 +134,7 @@ var bot = new Bot({
 	token: config.telegram.token
 })
 .on('message', function (message) {
+	console.log(message);
 	if(message.hasOwnProperty("text")){
 		splitStr = message.text.split(" ");
 
@@ -165,10 +167,15 @@ var bot = new Bot({
 									message: message
 								};
 								getLatestSales(sinceId,maxId,latestTweetId,sales,function(salesResult){
+									var maxId = 0;
 									salesResult.tweets.forEach(function(tweet,ind,arr){
 										bot.sendMessage({"chat_id" : salesResult.message.chat.id , "text" : tweet.text},function(nodifiedPromise){});		
+										if(tweet.id > maxId){
+											maxId = tweet.id;
+										}
 									});
-									SteamChat.update({"id": salesResult.message.chat.id}, {$set: {"latestTweetId": latestTweetId}}, {"upsert": true}, function(err,result){});
+
+									SteamChat.update({"id": salesResult.message.chat.id}, {$set: {"latestTweetId": maxId}}, {"upsert": true}, function(err,result){});
 								});
 
 							});
