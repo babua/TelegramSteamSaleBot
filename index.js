@@ -98,7 +98,11 @@ SteamChat.find({}, function(err,docs){
 		maxId = null;
 		var sales = {
 			tweets: [], 
-			message: message
+			message: {
+				chat: {
+					id: steamChat.id;
+				}
+			}
 		};
 		getLatestSales(sinceId,maxId,sales);
 	});

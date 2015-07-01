@@ -1,6 +1,7 @@
 {
 	"name": "SteamSaleBot",
 	"version": "0.0.1",
+	"repository": "https://github.com/babua/TelegramSteamSaleBot",
 	"description": "A Telegram bot that posts Steam sales",
 	"dependencies": {
 		"node-telegram-bot" : "latest",
