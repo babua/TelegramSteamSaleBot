@@ -88,12 +88,15 @@ var getLatestSales = function(sinceId, maxId, latestTweetId, sales){
 
 };
 
-var checkSteamJob = new CronJob('00 */30 * * *', function(){
+var checkSteamJob = new CronJob('* * * * *', function(){
+	console.log('entering job');
 SteamChat.find({}, function(err,docs){
 	docs.forEach(function(steamChat,ind,arr){
 		var sinceId = null;
+		var latestTweetId = 0;
 		if(steamChat.latestTweetId !== 0){
 			sinceId = steamChat.latestTweetId;
+			latestTweetId = steamChat.latestTweetId;
 		}
 		maxId = null;
 		var sales = {
@@ -104,12 +107,12 @@ SteamChat.find({}, function(err,docs){
 				}
 			}
 		};
-		getLatestSales(sinceId,maxId,sales);
+		getLatestSales(sinceId,maxId,latestTweetId,sales);
 	});
 });
 }
 ,function(){
-
+	console.log('job done');
 }
 ,true);
 
