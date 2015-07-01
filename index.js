@@ -81,7 +81,7 @@ var getLatestSales = function(sinceId, maxId, latestTweetId, sales, onFinished){
 
 };
 
-var checkSteamJob = new CronJob('* */1 * * *', function(){
+var checkSteamJob = new CronJob('* * * * * *', function(){
 
 
 	console.log('entering job');
@@ -95,12 +95,13 @@ var checkSteamJob = new CronJob('* */1 * * *', function(){
 	});
 	maxId = null;
 	latestTweetId = sinceId;
+	console.log(sinceId);
 	var sales = {
 			tweets: [] 
 		};
 
 	getLatestSales(sinceId,maxId,latestTweetId,sales,function(sales){
-
+		console.log(sales);
 		SteamChat.find({}, function(err,docs){
 			docs.forEach(function(steamChat,ind,arr){
 
