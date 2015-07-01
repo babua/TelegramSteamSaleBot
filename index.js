@@ -100,7 +100,7 @@ SteamChat.find({}, function(err,docs){
 			tweets: [], 
 			message: {
 				chat: {
-					id: steamChat.id;
+					id: steamChat.id
 				}
 			}
 		};
