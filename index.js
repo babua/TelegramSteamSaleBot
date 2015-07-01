@@ -91,7 +91,7 @@ var checkSteamJob = new CronJob('* * * * * *', function(){
 	var latestTweetId = 0;
 	var sinceId = Infinity;
 	docs.forEach(function(steamChat,ind,arr){
-		if(steamChat.latestTweetId < sinceId) sinceId = steamChat.latestTweetId;
+		if(steamChat.latestTweetId < sinceId && steamChat.latestTweetId > 0) sinceId = steamChat.latestTweetId;
 	});
 	maxId = null;
 	latestTweetId = sinceId;
