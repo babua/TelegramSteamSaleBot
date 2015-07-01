@@ -10,7 +10,7 @@ db = mongoose();
 var twitter = new Twitter(config.twitter);
 var SteamChat = db.model('SteamChat');
 
-var getLatestSales = function(sinceId, maxId, latestTweetId, sales){
+var getLatestSales = function(sinceId, maxId, latestTweetId, sales, onFinished){
 	var initialRun = false;
 	var twitterParams = { "count": config.tweetCount, "screen_name": 'steam_games', "exclude_replies": true, "trim_user": true, "include_rts": false};		
 	if(sinceId !== null)
@@ -54,12 +54,7 @@ var getLatestSales = function(sinceId, maxId, latestTweetId, sales){
 			});
 			if(saleTweets.length === 0 || minId === maxId)
 			{
-		// no more new tweets, we're done, send message
-		sales.tweets.forEach(function(tweet,ind,arr){
-			bot.sendMessage({"chat_id" : sales.message.chat.id , "text" : tweet.text},function(nodifiedPromise){});		
-		});
-		//save the last sent tweet id
-		SteamChat.update({"id": sales.message.chat.id}, {$set: {"latestTweetId": latestTweetId}}, {"upsert": true}, function(err,result){});
+				onFinished(sales);		
 	} else 
 	{	
 		//add tweets and get the next batch
@@ -69,13 +64,11 @@ var getLatestSales = function(sinceId, maxId, latestTweetId, sales){
 
 		if(initialRun)
 		{
-			sales.tweets.forEach(function(tweet,ind,arr){
-				bot.sendMessage({"chat_id" : sales.message.chat.id , "text" : tweet.text},function(nodifiedPromise){});		
-			});
-			SteamChat.update({"id": sales.message.chat.id}, {$set: {"latestTweetId": latestTweetId}}, {"upsert": true}, function(err,result){});
+
+			onFinished(sales);
 		} else
 		{
-			getLatestSales(sinceId,minId-1,latestTweetId,sales);
+			getLatestSales(sinceId,minId-1,latestTweetId,sales,onFinished);
 		}
 	}
 
@@ -88,28 +81,47 @@ var getLatestSales = function(sinceId, maxId, latestTweetId, sales){
 
 };
 
-var checkSteamJob = new CronJob('* * * * *', function(){
+var checkSteamJob = new CronJob('* */1 * * *', function(){
+
+
 	console.log('entering job');
-SteamChat.find({}, function(err,docs){
+	SteamChat.find({}, function(err,docs){
+	
+
+	var latestTweetId = 0;
+	var sinceId = Infinity;
 	docs.forEach(function(steamChat,ind,arr){
-		var sinceId = null;
-		var latestTweetId = 0;
-		if(steamChat.latestTweetId !== 0){
-			sinceId = steamChat.latestTweetId;
-			latestTweetId = steamChat.latestTweetId;
-		}
-		maxId = null;
-		var sales = {
-			tweets: [], 
-			message: {
-				chat: {
-					id: steamChat.id
-				}
-			}
-		};
-		getLatestSales(sinceId,maxId,latestTweetId,sales);
+		if(steamChat.latestTweetId < sinceId) sinceId = steamChat.latestTweetId;
 	});
+	maxId = null;
+	latestTweetId = sinceId;
+	var sales = {
+			tweets: [] 
+		};
+
+	getLatestSales(sinceId,maxId,latestTweetId,sales,function(sales){
+
+		SteamChat.find({}, function(err,docs){
+			docs.forEach(function(steamChat,ind,arr){
+
+				userTweets = sales.tweets.filter(function(tweet){
+					if(tweet.id > steamChat.latestTweetId) return true;
+				});
+				userSales = sales;
+				userSales.tweets = userTweets;
+
+				userSales.tweets.forEach(function(tweet,ind,arr){
+					bot.sendMessage({"chat_id" : steamChat.id , "text" : tweet.text},function(nodifiedPromise){});		
+				});
+
+			});	
+		});
+	
+	});
+
+
 });
+
 }
 ,function(){
 	console.log('job done');
@@ -130,6 +142,8 @@ var bot = new Bot({
 				if(splitStr[1] === "start")
 				{
 					var startCallback = function(err,steamChat){
+
+
 						if(err)
 						{
 							console.log(err)
@@ -137,7 +151,10 @@ var bot = new Bot({
 						} 
 						if(steamChat === null)
 						{
+
+
 							SteamChat.update({"id": message.chat.id}, {$set: {"id": message.chat.id, "latestTweetId": 0}}, {"upsert": true, "new": true}, function(err,result){
+
 								bot.sendMessage({"chat_id" : message.chat.id , "text" : "Posting Steam sales to this chat"},function(nodifiedPromise){});	
 								sinceId = null;
 								maxId = null;
@@ -146,12 +163,24 @@ var bot = new Bot({
 									tweets: [], 
 									message: message
 								};
-								getLatestSales(sinceId,maxId,latestTweetId,sales);						
+								getLatestSales(sinceId,maxId,latestTweetId,sales,function(salesResult){
+									salesResult.tweets.forEach(function(tweet,ind,arr){
+										bot.sendMessage({"chat_id" : salesResult.message.chat.id , "text" : tweet.text},function(nodifiedPromise){});		
+									});
+									SteamChat.update({"id": salesResult.message.chat.id}, {$set: {"latestTweetId": latestTweetId}}, {"upsert": true}, function(err,result){});
+								});
+
 							});
+
+
+
 						} else
 						{
 							bot.sendMessage({"chat_id" : message.chat.id , "text" : "This chat is already receiving Steam sales"},function(nodifiedPromise){});							
 						}
+
+
+
 					};
 					startCallback.message = message;
 					SteamChat.findOne({"id" : message.chat.id},startCallback);
