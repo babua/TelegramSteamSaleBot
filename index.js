@@ -81,7 +81,7 @@ var getLatestSales = function(sinceId, maxId, latestTweetId, sales, onFinished){
 
 };
 
-var checkSteamJob = new CronJob('* * * * * *', function(){
+var checkSteamJob = new CronJob('* */15 * * * *', function(){
 
 
 	console.log('entering job');
